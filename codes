@@ -66,7 +66,58 @@ print("Unique Power Conditions:", data["Power_Condition"].unique())
 # Display first few rows
 print(data.head())
 
+****************************************************************
 
+
+Approach 1: Sampling 1000 Random Data Points Per Fault Type & Power Condition
+If we just need a random subset of 1000 rows per condition, we can do:
+
+python
+Copy
+Edit
+import pandas as pd
+
+# Function to sample 1000 rows per fault type & power condition
+def sample_data(df, n=1000):
+    return df.sample(n=min(n, len(df)), random_state=42)  # Ensure reproducibility
+
+# Sample 1000 rows from each dataset
+f0_lpp_sample = sample_data(f0_lpp)
+f0_mpp_sample = sample_data(f0_mpp)
+f1_lpp_sample = sample_data(f1_lpp)
+f1_mpp_sample = sample_data(f1_mpp)
+f5_lpp_sample = sample_data(f5_lpp)
+f5_mpp_sample = sample_data(f5_mpp)
+
+# Merge all sampled datasets
+data = pd.concat([f0_lpp_sample, f0_mpp_sample, f1_lpp_sample, f1_mpp_sample, f5_lpp_sample, f5_mpp_sample], ignore_index=True)
+
+# Display dataset shape
+print("Dataset Shape:", data.shape)
+print("Unique Fault Types:", data['Fault_Type'].unique())
+print("Unique Power Conditions:", data['Power_Condition'].unique())
+Approach 2: Selecting Data at Specific Time Intervals (Every Millisecond, Second, or Minute)
+If the time column exists, we can group by time and take 1000 samples per unit time:
+
+python
+Copy
+Edit
+# Convert Time to appropriate format (if not already numeric)
+data["Time"] = pd.to_numeric(data["Time"], errors='coerce')
+
+# Group by rounded time (millisecond, second, or minute) & take first 1000 rows
+data_filtered = data.groupby(data["Time"].round()).head(1000)
+
+# Display dataset shape
+print("Filtered Dataset Shape:", data_filtered.shape)
+Which Approach to Use?
+✅ If time-based selection is required → Use Approach 2
+✅ If random 1000 samples per condition are fine → Use Approach 1
+
+Do you want time-based filtering, or should we keep random sampling? 🚀
+
+
+*************************************************************************************
 
 Step 3: Data Preprocessing & Feature Selection
 Now, we’ll:
