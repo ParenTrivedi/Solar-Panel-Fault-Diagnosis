@@ -1,0 +1,10 @@
+Fault Type Description
+F1 (Inverter fault Complete failure in one of the six IGBTs)
+F2 (Feedback Sensor fault One phase sensor fault 20%)
+F3 (Grid anomaly Intermittent voltage sags)
+F4 (PV array mismatch 10 to 20% nonhomogeneous partial shading)
+F5 (PV array mismatch 15% open circuit in PV array)
+F6 (MPPT/IPPT controller fault -20% gain parameter of PI controller in MPPT/ IPPT controller of the boost converter)
+F7 (Boost converter controller fault +20% in time constant parameter of PI controller in MPPT/IPPT controller of the boost converter)
+
+selecting most suitable fault for machine learning in random forest and SVM method is F1 and F5
