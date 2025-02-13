@@ -1,0 +1,17 @@
+Time: Time of real measurement in seconds. The average sampling is 𝑇! = 9.9989 𝜇𝑠.
+ Ipv: PV array current measurement.
+ Vpv: PV array voltage measurement.
+ Vdc: DC voltage measurement.
+ ia: Phase_A current measurement.
+ ib: Phase_B current measurement.
+ ic: Phase_C current measurement.
+ va: Phase_A voltage measurement.
+ vb: Phase_B voltage measurement.
+ vc: Phase_C voltage measurement.
+ Iabc: Positive-sequence estimated current magnitude.
+ If: Positive-sequence estimated current frequency.
+ Vabc: Positive-sequence estimated voltage magnitude.
+ Vf: Positive-sequence estimated voltage frequency. 
+
+all data header names
+
