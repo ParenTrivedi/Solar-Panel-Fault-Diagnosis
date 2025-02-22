@@ -1,0 +1,189 @@
+import pandas as pd
+import numpy as np
+import matplotlib.pyplot as plt
+import seaborn as sns
+from sklearn.decomposition import PCA
+from sklearn.model_selection import train_test_split, cross_val_score, ShuffleSplit
+from sklearn.preprocessing import StandardScaler, LabelEncoder
+from sklearn.ensemble import RandomForestClassifier
+from sklearn.svm import SVC
+from sklearn.metrics import accuracy_score, classification_report, confusion_matrix
+from mpl_toolkits.mplot3d import Axes3D
+
+# Set plot styles
+plt.rcParams.update({'font.size': 14, "font.family": "Times New Roman"})
+
+# ----------------------
+# Load Datasets
+# ----------------------
+# Read each CSV file separately
+df_f0l = pd.read_csv(r'/content/F0L.csv')
+df_f1l = pd.read_csv(r'/content/F1L.csv')
+df_f5l = pd.read_csv(r'/content/F5L.csv')
+
+# Concatenate the DataFrames into a single DataFrame
+df1 = pd.concat([df_f0l, df_f1l, df_f5l], ignore_index=True)
+
+# **Add a 'Fault_Type' column to df1 based on the source file**
+df1['Fault_Type'] = pd.Series(['F0'] * len(df_f0l) + ['F1'] * len(df_f1l) + ['F5'] * len(df_f5l))
+
+
+# Read each CSV file separately for df2
+df_f0m = pd.read_csv(r'/content/F0M.csv')
+df_f1m = pd.read_csv(r'/content/F1M.csv')
+df_f5m = pd.read_csv(r'/content/F5M.csv')
+
+# Concatenate the DataFrames into a single DataFrame
+df2 = pd.concat([df_f0m, df_f1m, df_f5m], ignore_index=True)
+
+# **Add a 'Fault_Type' column to df2 based on the source file**
+df2['Fault_Type'] = pd.Series(['F0'] * len(df_f0m) + ['F1'] * len(df_f1m) + ['F5'] * len(df_f5m))
+
+
+# ----------------------
+# Data Visualization: Fault Distribution
+# ----------------------
+plt.figure(figsize=(5, 5))
+# Assuming 'Fault_Type' is the correct column representing fault types
+plt.pie(df1['Fault_Type'].value_counts(), labels=df1['Fault_Type'].unique(), autopct='%2.1f%%', colors=sns.color_palette("pastel"))
+plt.title("Fault Distribution in Limited Power Dataset")
+plt.show()
+
+
+# ----------------------
+# Feature Correlation Heatmap
+# ----------------------
+X = df1.iloc[:, 1:-1]  # Features
+# Assuming 'Fault_Type' is the target variable column
+Y = df1['Fault_Type']    # Target Labels
+
+plt.figure(figsize=(12, 10))
+sns.heatmap(X.corr(), annot=True, cmap='coolwarm', fmt=".2f")
+plt.title("Feature Correlation Heatmap")
+plt.show()
+# ----------------------
+# Data Preprocessing
+# ----------------------
+X_train, X_test, y_train, y_test = train_test_split(X, Y, test_size=0.2, shuffle=True, random_state=42)
+scaler = StandardScaler()
+X_train_scaled = scaler.fit_transform(X_train)
+X_test_scaled = scaler.transform(X_test)
+
+# ----------------------
+# PCA: Dimensionality Reduction
+# ----------------------
+for i in range(1, 14):
+    pca = PCA(n_components=i)
+    pca.fit(X_train_scaled)
+    print(f"Cumulative explained variance for {i} components: {np.sum(pca.explained_variance_ratio_):.4f}")
+
+# Apply PCA with 2 components
+pca_2 = PCA(n_components=2)
+X_pca_2D = pca_2.fit_transform(X_train_scaled)
+principalDf = pd.DataFrame(data=X_pca_2D, columns=['PC1', 'PC2'])
+principalDf['Fault'] = np.array(y_train)
+
+plt.figure(figsize=(10, 8))
+sns.scatterplot(x=principalDf['PC1'], y=principalDf['PC2'], hue=principalDf['Fault'], palette='Dark2', alpha=0.7)
+plt.title("2D PCA Visualization")
+plt.xlabel("Principal Component 1")
+plt.ylabel("Principal Component 2")
+plt.show()
+
+# 3D PCA Visualization
+pca_3 = PCA(n_components=3)
+X_pca_3D = pca_3.fit_transform(X_train_scaled)
+principalDf = pd.DataFrame(data=X_pca_3D, columns=['PC1', 'PC2', 'PC3'])
+principalDf['Fault'] = np.array(y_train)
+
+fig = plt.figure(figsize=(10, 10))
+ax = fig.add_subplot(111, projection='3d')
+colors = sns.color_palette("husl", len(y_train.unique()))
+for fault, color in zip(y_train.unique(), colors):
+    indices = principalDf['Fault'] == fault
+    ax.scatter(principalDf.loc[indices, 'PC1'],
+               principalDf.loc[indices, 'PC2'],
+               principalDf.loc[indices, 'PC3'],
+               c=[color], label=fault, s=50)
+ax.set_xlabel('Principal Component 1')
+ax.set_ylabel('Principal Component 2')
+ax.set_zlabel('Principal Component 3')
+ax.set_title('3D PCA Visualization')
+ax.legend()
+plt.show()
+
+# ----------------------
+# Train & Evaluate Models
+# ----------------------
+rf_model = RandomForestClassifier(n_estimators=100, random_state=42)
+rf_model.fit(X_train_scaled, y_train)
+y_pred_rf = rf_model.predict(X_test_scaled)
+
+svm_model = SVC(kernel='rbf', C=1.0, gamma='scale', random_state=42)
+svm_model.fit(X_train_scaled, y_train)
+y_pred_svm = svm_model.predict(X_test_scaled)
+
+# ----------------------
+# Confusion Matrix Plot
+# ----------------------
+def plot_confusion_matrix(y_true, y_pred, model_name):
+    cm = confusion_matrix(y_true, y_pred)
+    plt.figure(figsize=(8, 6))
+    sns.heatmap(cm, annot=True, fmt="d", cmap="viridis", xticklabels=np.unique(y_true), yticklabels=np.unique(y_true))
+    plt.xlabel("Predicted Label")
+    plt.ylabel("True Label")
+    plt.title(f"Confusion Matrix - {model_name}")
+    plt.show()
+
+plot_confusion_matrix(y_test, y_pred_rf, "Random Forest")
+plot_confusion_matrix(y_test, y_pred_svm, "SVM")
+
+# ----------------------
+# Final Model Evaluations
+# ----------------------
+print("\nRandom Forest Results:")
+print(f"Accuracy: {accuracy_score(y_test, y_pred_rf):.4f}")
+print(classification_report(y_test, y_pred_rf))
+
+print("\nSVM Results:")
+print(f"Accuracy: {accuracy_score(y_test, y_pred_svm):.4f}")
+print(classification_report(y_test, y_pred_svm))
+
+# ----------------------
+# Data Distribution: Pie Chart
+# ----------------------
+plt.figure(figsize=(5, 5))
+# Use 'Fault_Type' column instead of 'label'
+plt.pie(df1['Fault_Type'].value_counts(), labels=df1['Fault_Type'].unique(), autopct='%2.1f%%', 
+        colors=sns.color_palette("pastel"), startangle=90)
+plt.title("Label Distribution in Dataset")
+plt.show()
+
+# ----------------------
+# Pairplot Visualization
+# ----------------------
+# Use 'Fault_Type' column instead of 'label' for hue
+g = sns.pairplot(data=df1.iloc[::10, 1:], hue="Fault_Type", palette='rocket', diag_kind="kde")
+g.fig.set_size_inches(15, 15)
+plt.show()
+
+# ----------------------
+# Feature Selection
+# ----------------------
+X = df1.iloc[:, 1:-1]  # Features (excluding first and last columns)
+Y = df1.iloc[:, -1]    # Target Labels (last column)
+
+# ----------------------
+# Feature Correlation Heatmap
+# ----------------------
+plt.figure(figsize=(20, 20))
+sns.heatmap(X.corr(), annot=True, cmap='coolwarm', fmt=".2f", linewidths=0.5)
+plt.title("Feature Correlation Heatmap")
+plt.show()
+
+# ----------------------
+# Pairplot Visualization
+# ----------------------
+g = sns.pairplot(data=df1.iloc[::10, 1:], hue="label", palette='rocket', diag_kind="kde")
+g.fig.set_size_inches(15, 15)
+plt.show()
