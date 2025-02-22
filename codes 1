@@ -1,0 +1,150 @@
+import pandas as pd
+import numpy as np
+import matplotlib.pyplot as plt
+import seaborn as sns
+import plotly.express as px
+from sklearn.decomposition import PCA
+from sklearn.model_selection import train_test_split
+from sklearn.preprocessing import StandardScaler, LabelEncoder
+from sklearn.ensemble import RandomForestClassifier
+from sklearn.svm import SVC
+from sklearn.metrics import accuracy_score, classification_report, confusion_matrix
+from mpl_toolkits.mplot3d import Axes3D
+
+# Set plot styles
+plt.rcParams.update({'font.size': 14, "font.family": "Times New Roman"})
+
+# ----------------------
+# Load Multiple CSV Files
+# ----------------------
+column_names = ['Time', 'Ipv', 'Vpv', 'Vdc', 'ia', 'ib', 'ic', 'va', 'vb', 'vc',
+                'Iabc', 'If', 'Vabc', 'Vf', 'Fault_Type', 'Power_Condition']
+solar_data = pd.DataFrame(columns=column_names)
+
+fault_types = ['F0', 'F1', 'F5']
+power_conditions = ['LPP', 'MPP']
+
+for fault in fault_types:
+    for power in power_conditions:
+        file_path = ('/content/F0L.csv', '/content/F1L.csv', '/content/F5L.csv',  '/content/F0M.csv', '/content/F1M.csv',  '/content/F5M.csv')[fault_types.index(fault)]
+        df = pd.read_csv(file_path)
+        df['Fault_Type'] = fault
+        df['Power_Condition'] = power
+        solar_data = pd.concat([solar_data, df], ignore_index=True)
+
+# Encode categorical labels
+label_encoder = LabelEncoder()
+solar_data['Fault_Type'] = label_encoder.fit_transform(solar_data['Fault_Type'])
+solar_data['Power_Condition'] = label_encoder.fit_transform(solar_data['Power_Condition'])
+
+# Drop unnecessary columns
+if 'Time' in solar_data.columns:
+    solar_data.drop(columns=['Time'], inplace=True)
+
+# Define features and target
+X = solar_data.drop(columns=['Fault_Type'])
+y = solar_data['Fault_Type']
+
+# Train-test split
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+
+# Feature scaling
+scaler = StandardScaler()
+X_train_scaled = scaler.fit_transform(X_train)
+X_test_scaled = scaler.transform(X_test)
+
+# ----------------------
+# Train & Evaluate Models
+# ----------------------
+rf_model = RandomForestClassifier(n_estimators=100, random_state=42)
+rf_model.fit(X_train, y_train)
+y_pred_rf = rf_model.predict(X_test)
+
+svm_model = SVC(kernel='rbf', C=1.0, gamma='scale', random_state=42)
+svm_model.fit(X_train_scaled, y_train)
+y_pred_svm = svm_model.predict(X_test_scaled)
+
+# ----------------------
+# Model Evaluation
+# ----------------------
+def evaluate_model(y_true, y_pred, model_name):
+    print(f"\n{model_name} Results:")
+    print(f"Accuracy: {accuracy_score(y_true, y_pred):.4f}")
+    print(classification_report(y_true, y_pred))
+    print("Confusion Matrix:\n", confusion_matrix(y_true, y_pred))
+
+evaluate_model(y_test, y_pred_rf, "Random Forest")
+evaluate_model(y_test, y_pred_svm, "SVM")
+
+# ----------------------
+# Feature Importance (Random Forest)
+# ----------------------
+plt.figure(figsize=(10, 6))
+feature_importance = pd.Series(rf_model.feature_importances_, index=X.columns).sort_values(ascending=False)
+sns.barplot(x=feature_importance, y=feature_importance.index, palette='viridis')
+plt.xlabel("Feature Importance Score")
+plt.ylabel("Features")
+plt.title("Feature Importance from Random Forest")
+plt.show()
+
+# ----------------------
+# 3D Visualization
+# ----------------------
+feature_x, feature_y, feature_z = 'Vpv', 'Ipv', 'Vdc'
+fig = plt.figure(figsize=(10, 7))
+ax = fig.add_subplot(111, projection="3d")
+scatter = ax.scatter(solar_data[feature_x], solar_data[feature_y], solar_data[feature_z],
+                      c=solar_data["Fault_Type"], cmap="coolwarm", edgecolors="k")
+ax.set_xlabel(feature_x)
+ax.set_ylabel(feature_y)
+ax.set_zlabel(feature_z)
+ax.set_title("3D Visualization of Fault Types")
+legend = ax.legend(*scatter.legend_elements(), title="Fault Type")
+ax.add_artist(legend)
+plt.show()
+
+# Interactive 3D Plot using Plotly
+fig = px.scatter_3d(solar_data, x=feature_x, y=feature_y, z=feature_z,
+                     color=solar_data["Fault_Type"].astype(str),
+                     title="Interactive 3D Visualization of Fault Types",
+                     labels={"color": "Fault Type"})
+fig.show()
+
+# ----------------------
+# Data Distribution: Pie Chart
+# ----------------------
+plt.figure(figsize=(5, 5))
+# Use 'Fault_Type' column instead of 'label'
+plt.pie(df1['Fault_Type'].value_counts(), labels=df1['Fault_Type'].unique(), autopct='%2.1f%%', 
+        colors=sns.color_palette("pastel"), startangle=90)
+plt.title("Label Distribution in Dataset")
+plt.show()
+
+# ----------------------
+# Pairplot Visualization
+# ----------------------
+# Use 'Fault_Type' column instead of 'label' for hue
+g = sns.pairplot(data=df1.iloc[::10, 1:], hue="Fault_Type", palette='rocket', diag_kind="kde")
+g.fig.set_size_inches(15, 15)
+plt.show()
+
+# ----------------------
+# Feature Selection
+# ----------------------
+X = df1.iloc[:, 1:-1]  # Features (excluding first and last columns)
+Y = df1.iloc[:, -1]    # Target Labels (last column)
+
+# ----------------------
+# Feature Correlation Heatmap
+# ----------------------
+plt.figure(figsize=(20, 20))
+sns.heatmap(X.corr(), annot=True, cmap='coolwarm', fmt=".2f", linewidths=0.5)
+plt.title("Feature Correlation Heatmap")
+plt.show()
+
+# ----------------------
+# Pairplot Visualization
+# ----------------------
+g = sns.pairplot(data=df1.iloc[::10, 1:], hue="Fault_Type", palette='rocket', diag_kind="kde")
+g.fig.set_size_inches(15, 15)
+plt.show()
